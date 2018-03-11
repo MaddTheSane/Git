@@ -111,24 +111,30 @@ GIT_INLINE git_uint32 memRead32 (git_uint32 address)
 {
     if (address <= gEndMem - 4)
         return read32 (gMem + address);
-    else
-        return memReadError (address), 0;
+    else {
+        memReadError (address);
+        return 0;
+    }
 }
 
 GIT_INLINE git_uint32 memRead16 (git_uint32 address)
 {
     if (address <= gEndMem - 2)
         return read16 (gMem + address);
-    else
-        return memReadError (address), 0;
+    else {
+        memReadError (address);
+        return 0;
+    }
 }
 
 GIT_INLINE git_uint32 memRead8 (git_uint32 address)
 {
     if (address < gEndMem)
         return read8 (gMem + address);
-    else
-        return memReadError (address), 0;
+    else {
+        memReadError (address);
+        return 0;
+    }
 }
 
 GIT_INLINE void memWrite32 (git_uint32 address, git_uint32 val)

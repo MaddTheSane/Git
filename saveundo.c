@@ -40,7 +40,7 @@ int saveUndo (git_sint32 * base, git_sint32 * sp)
 {
     git_uint32 undoSize = sizeof(UndoRecord);
     git_uint32 mapSize = sizeof(MemoryPage*) * (gEndMem - gRamStart) / 256;
-    git_uint32 stackSize = sizeof(git_sint32) * (sp - base);
+    git_uint32 stackSize = (git_uint32)(sizeof(git_sint32) * (sp - base));
     git_uint32 totalSize = undoSize + mapSize + stackSize;
 
     git_uint32 addr = gRamStart; // Address in glulx memory.
@@ -189,8 +189,9 @@ int restoreUndo (git_sint32* base, git_uint32 protectPos, git_uint32 protectSize
             memcpy (gMem + addr, *map, protectPos & 0xff);
             protectSize += protectPos & 0xff;
             
-            while (protectSize > 256)
-                addr += 256, ++map, protectSize -= 256;
+            while (protectSize > 256) {
+                addr += 256; ++map; protectSize -= 256;
+            }
 
             if (addr < gEndMem)
             {
@@ -198,7 +199,7 @@ int restoreUndo (git_sint32* base, git_uint32 protectPos, git_uint32 protectSize
                         *map + protectSize,
                         256 - protectSize);
             }
-            addr += 256, ++map;
+            addr += 256; ++map;
         }
 
         for ( ; addr < gEndMem ; addr += 256, ++map)
@@ -288,7 +289,7 @@ static void deleteRecord (UndoRecord * u)
         {
             if (u->memoryMap [slot] == u->prev->memoryMap [slot])
                 u->memoryMap [slot] = NULL;
-            addr += 256, ++slot;
+            addr += 256; ++slot;
         }
     }
     else
@@ -298,7 +299,7 @@ static void deleteRecord (UndoRecord * u)
         {
             if (u->memoryMap [slot] == (gInitMem + addr))
                 u->memoryMap [slot] = NULL;
-            addr += 256, ++slot;
+            addr += 256; ++slot;
         }
     }
 
@@ -314,7 +315,7 @@ static void deleteRecord (UndoRecord * u)
         {
             if (u->memoryMap [slot] == u->next->memoryMap [slot])
                 u->memoryMap [slot] = NULL;
-            addr += 256, ++slot;
+            addr += 256; ++slot;
         }
     }
 
@@ -329,7 +330,7 @@ static void deleteRecord (UndoRecord * u)
             free ((void*) u->memoryMap [slot]);
             gUndoSize -= 256;
         }
-        addr += 256, ++slot;
+        addr += 256; ++slot;
     }
 
     // Free the memory map itself.

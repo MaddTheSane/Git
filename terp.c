@@ -23,7 +23,7 @@ Opcode* gOpcodeTable;
 
 #define LOCAL(n)   (locals[(n)])
 
-#define PUSH(n)    *sp++ = (n)
+#define PUSH(n)    *sp++ = ((git_sint32)n)
 #define POP        (*--sp)
 #define READ_PC    ((git_uint32)(*pc++))
 
@@ -112,7 +112,7 @@ void startProgram (size_t cacheSize, enum IOMode ioMode)
     initCompiler (cacheSize);
 
     // Initialise the random number generator.
-    srand (time(NULL));
+    srand (time(NULL) & 0x7fffffff);
 
     // Set up the stack.
 
@@ -547,14 +547,14 @@ finish_save_stub:
     do_catch_stub_addr:
         CHECK_FREE(4);
         L7 = READ_PC;
-        memWrite32(L7, (sp-base+4)*4);
+        memWrite32(L7, (git_uint32)((sp-base+4)*4));
         PUSH (1);       // DestType
         goto finish_catch_stub_addr_L7;
 
     do_catch_stub_local:
         CHECK_FREE(4);
         L7 = READ_PC;
-        LOCAL(L7 / 4) = (sp-base+4)*4;
+        LOCAL(L7 / 4) = (git_sint32)((sp-base+4)*4);
         PUSH (2);       // DestType
         goto finish_catch_stub_addr_L7;
 
@@ -564,7 +564,7 @@ finish_save_stub:
         PUSH (0);                  // DestAddr
         PUSH (READ_PC);            // PC
         PUSH ((frame - base) * 4); // FramePtr
-        L7 = (sp - base)*4;        // Catch token.
+        L7 = (git_sint32)((sp - base)*4);// Catch token.
 	    PUSH (L7);
         NEXT;
 
@@ -697,7 +697,7 @@ do_tailcall:
         goto do_jump_abs_L7;
 
     do_stkcount:
-        S1 = sp - values; NEXT;
+        S1 = (git_sint32)(sp - values); NEXT;
     
     do_stkpeek:
         if (L1 < 0 || L1 > (sp - values))
@@ -1187,7 +1187,7 @@ do_tailcall:
         NEXT;
 
     do_setrandom:
-        srand (L1 ? L1 : time(NULL));
+        srand (L1 ? L1 : (time(NULL) & 0x7fffffff));
         NEXT;
 
     do_glk:
