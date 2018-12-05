@@ -381,7 +381,7 @@ static git_uint32 findCutoffPoint ()
 
     for (h = start ; h < top ; h = END_OF_BLOCK(h))
     {
-        if (h->glulxSize > 0)
+        if (h->glulxSize > 0 && blockCount != 0)
         {
             runCount += (h->runCounter + blockCount + 1) / blockCount;
         }
