@@ -120,7 +120,7 @@ extern git_sint32* gStackPointer;
 
 extern enum IOMode gIoMode;
 
-extern glui32 lo_random ();
+extern glui32 lo_random (void);
 extern void lo_seed_random (glui32 seed);
 
 extern void startProgram (size_t cacheSize);
@@ -157,11 +157,11 @@ extern void initUndo (git_uint32 size);
 extern void resetUndo (void);
 extern void shutdownUndo (void);
 
-extern int  hasUndo ();
+extern int  hasUndo (void);
 extern int  saveUndo (git_sint32* base, git_sint32* sp);
 extern int  restoreUndo (git_sint32* base,
                 git_uint32 protectPos, git_uint32 protectSize);
-extern void discardUndo ();
+extern void discardUndo (void);
 
 // heap.c
 
