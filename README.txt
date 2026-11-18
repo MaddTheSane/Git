@@ -45,8 +45,7 @@ have to play it by ear. If the Glk library you chose comes with instructions,
 that's probably a good place to start.
 
 On Unix, git_unix.c contains the startup code required by the Glk library.
-git_mac.c and git_windows.c contain startup code for MacGlk and WinGlk
-respectively, but I can't guarantee that they're fully up-to-date.
+On Windows, git_windows.c contains startup code required for Windows Glk.
 
 It should be possible to build Git with any C compiler, but it works best with
 GCC or Clang, because they have a non-standard extension that Git can use for a
@@ -69,13 +68,17 @@ engine use GCC's labels-as-values extension.
 * Porting to a new platform
 
 To do a new port, you first need to find a suitable Glk library, or write a new
-one. Then you need to write the startup code. Start with a copy of git_unix.c,
-git_mac.c or git_windows.c and modify it appropriately.
+one. Then you need to write the startup code. Start with a copy of git_unix.c
+or git_windows.c and modify it appropriately.
 
 The startup code needs to implement the following functions:
 
-  void glk_main()                 // Standard Glk entrypoint
-  void fatalError(const char* s)  // Display error message and quit
+  /* Standard Glk entry point. */
+  void glk_main()
+  /* Display error message and quit. */
+  void fatalError(const char* s)
+  /* Display error message, including given integer, then quit. */
+  void fatalErrorI(const char* s, int i)
 
 In glk_main(), you need to locate the game file somehow. Then you have two
 options. You can open the game as a Glk stream and pass it to this function:
@@ -185,7 +188,16 @@ also to Eliuk Blau for tracking down bugs in the memory management opcodes.
 
 * Version History
 
-1.3.7 ####-##-##  Added new undo and double precision math related opcodes
+1.3.9             The @div and @mod opcodes now check for the case of
+                  -$80000000 / -1, which is an overflow error.
+                  Previous versions of Git included two non-standard opcodes:
+                  @git_setcacheram and @git_prunecache. These have now been
+                  removed.
+
+1.3.8 2023-10-12  Use either a native random number generator, or the
+                  xoshiro128** algorithm, taken from Glulxe.
+
+1.3.7 2022-07-12  Added new undo and double precision math related opcodes
                   (VM spec 3.1.3), contributed by Andrew Plotkin.
 
 1.3.6 2021-05-25  Direct threading now works for 64 bit builds.

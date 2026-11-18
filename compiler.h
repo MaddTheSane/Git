@@ -1,5 +1,4 @@
 // Header for compiler.c
-// $Id: compiler.h,v 1.11 2004/02/02 00:13:46 iain Exp $
 
 #ifndef GIT_COMPILER_H
 #define GIT_COMPILER_H
@@ -52,7 +51,6 @@ extern Block peekAtEmittedStuff (int numOpcodes);
 // -------------------------------------------------------------
 // Accessing compiled code
 
-extern void pruneCodeCache (git_uint32 start, git_uint32 size);
 extern void resetCodeCache (void);
 extern void compressCodeCache (void);
 

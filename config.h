@@ -1,4 +1,3 @@
-// $Id: config.h,v 1.4 2003/10/18 23:19:52 iain Exp $
 // Platform-dependent configuration for Git
 
 #ifndef GIT_CONFIG_H
@@ -18,6 +17,9 @@
 
 // Define this if we can use the "inline" keyword.
 // #define USE_INLINE
+
+// Define this to use a function native_random() to get random numbers.
+// #define USE_NATIVE_RANDOM
 
 // Define this to memory-map the game file to speed up loading. (Unix-specific)
 // #define USE_MMAP
@@ -83,7 +85,7 @@ typedef float git_float;
 typedef double git_double;
 
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
 // GCC and compatible compilers such as clang
 #  define maybe_unused  __attribute__((__unused__))
 #  define git_noreturn  __attribute__((__noreturn__))

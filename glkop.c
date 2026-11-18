@@ -1,5 +1,3 @@
-// $Id: glkop.c,v 1.4 2004/12/22 14:33:40 iain Exp $
-
 // glkop.c: Glulxe code for Glk API dispatching.
 //  Designed by Andrew Plotkin <erkyrath@eblong.com>
 //  http://www.eblong.com/zarf/glulx/index.html
@@ -100,7 +98,6 @@
 
 #define glulx_malloc malloc
 #define glulx_free free
-#define glulx_random lo_random
 
 #ifndef TRUE
 #define TRUE 1
@@ -109,6 +106,7 @@
 #define FALSE 0
 #endif
 
+#include <time.h>
 #include "glk.h"
 #include "git.h"
 #include "gi_dispa.h"
@@ -236,18 +234,18 @@ static void *classes_get(int classid, glui32 objid);
 static classref_t *classes_put(int classid, void *obj, glui32 origid);
 static void classes_remove(int classid, void *obj);
 
-static gidispatch_rock_t glulxe_classtable_register(void *obj, 
+static gidispatch_rock_t git_classtable_register(void *obj,
   glui32 objclass);
-static void glulxe_classtable_unregister(void *obj, glui32 objclass, 
+static void git_classtable_unregister(void *obj, glui32 objclass,
   gidispatch_rock_t objrock);
-static gidispatch_rock_t glulxe_retained_register(void *array,
+static gidispatch_rock_t git_retained_register(void *array,
   glui32 len, char *typecode);
-static void glulxe_retained_unregister(void *array, glui32 len, 
+static void git_retained_unregister(void *array, glui32 len,
   char *typecode, gidispatch_rock_t objrock);
 
 /* The library_select_hook is called every time the VM blocks for input.
    The app might take this opportunity to autosave, for example. */
-static void (*library_select_hook)(glui32) = NULL;
+static void (*library_select_hook)(glui32, glui32, glui32, glui32) = NULL;
 
 static char *grab_temp_c_array(glui32 addr, glui32 len, int passin);
 static void release_temp_c_array(char *arr, glui32 addr, glui32 len, int passout);
@@ -256,7 +254,7 @@ static void release_temp_i_array(glui32 *arr, glui32 addr, glui32 len, int passo
 static void **grab_temp_ptr_array(glui32 addr, glui32 len, int objclass, int passin);
 static void release_temp_ptr_array(void **arr, glui32 addr, glui32 len, int objclass, int passout);
 
-static void prepare_glk_args(char *proto, dispatch_splot_t *splot);
+static void prepare_glk_args(glui32 funcnum, char *proto, dispatch_splot_t *splot);
 static void parse_glk_args(dispatch_splot_t *splot, char **proto, int depth,
   int *argnumptr, glui32 subaddress, int subpassin);
 static void unparse_glk_args(dispatch_splot_t *splot, char **proto, int depth,
@@ -270,7 +268,8 @@ static maybe_unused char *get_game_id(void);
 int git_init_dispatch()
 {
   int ix;
-  
+  int randish;
+
   /* What with one thing and another, this *could* be called more than
      once. We only need to allocate the tables once. */
   if (git_classes)
@@ -288,19 +287,20 @@ int git_init_dispatch()
     * sizeof(classtable_t *));
   if (!git_classes)
     return FALSE;
-    
+
+  randish = time(NULL) % 101;
   for (ix=0; ix<num_classes; ix++) {
-    git_classes[ix] = new_classtable((glulx_random() % (glui32)(101)) + 1);
+    git_classes[ix] = new_classtable(1+120*ix+randish);
     if (!git_classes[ix])
       return FALSE;
   }
     
   /* Set up the two callbacks. */
-  gidispatch_set_object_registry(&glulxe_classtable_register, 
-    &glulxe_classtable_unregister);
-  gidispatch_set_retained_registry(&glulxe_retained_register, 
-    &glulxe_retained_unregister);
-  
+  gidispatch_set_object_registry(&git_classtable_register,
+    &git_classtable_unregister);
+  gidispatch_set_retained_registry(&git_retained_register,
+    &git_retained_unregister);
+
   return TRUE;
 }
 
@@ -327,6 +327,14 @@ glui32 git_perform_glk(glui32 funcnum, glui32 numargs, glui32 *arglist)
       goto WrongArgNum;
     retval = git_find_id_for_stream(glk_stream_get_current());
     break;
+  case 0x0062: /* fileref_create_by_prompt */
+    /* call a library hook on every glk_fileref_create_by_prompt(),
+       because it blocks and waits like glk_select() */
+    if (library_select_hook)
+      library_select_hook(0x0062, arglist[0], arglist[1], arglist[2]);
+    /* but then fall through to full dispatcher, because there's no real
+       need for speed here */
+    goto FullDispatcher;
   case 0x0080: /* put_char */
     if (numargs != 1)
       goto WrongArgNum;
@@ -340,7 +348,7 @@ glui32 git_perform_glk(glui32 funcnum, glui32 numargs, glui32 *arglist)
   case 0x00C0: /* select */
     /* call a library hook on every glk_select() */
     if (library_select_hook)
-      library_select_hook(arglist[0]);
+      library_select_hook(0x00C0, arglist[0], 0, 0);
     /* but then fall through to full dispatcher, because there's no real
        need for speed here */
     goto FullDispatcher;
@@ -366,7 +374,7 @@ glui32 git_perform_glk(glui32 funcnum, glui32 numargs, glui32 *arglist)
     break;
 
   WrongArgNum:
-    fatalError("Wrong number of arguments to Glk function.");
+    fatalErrorI("Wrong number of arguments to Glk function.", funcnum);
     break;
 
   FullDispatcher:
@@ -379,7 +387,7 @@ glui32 git_perform_glk(glui32 funcnum, glui32 numargs, glui32 *arglist)
     /* Grab the string. */
     proto = gidispatch_prototype(funcnum);
     if (!proto)
-      fatalError("Unknown Glk function.");
+      fatalErrorI("Unknown Glk function.", funcnum);
 
     splot.varglist = arglist;
     splot.numvargs = numargs;
@@ -392,7 +400,7 @@ glui32 git_perform_glk(glui32 funcnum, glui32 numargs, glui32 *arglist)
        arguments again, unloading the data back into Glulx memory. */
 
     /* Phase 0. */
-    prepare_glk_args(proto, &splot);
+    prepare_glk_args(funcnum, proto, &splot);
 
     /* Phase 1. */
     argnum = 0;
@@ -473,7 +481,7 @@ static char *read_prefix(char *cx, int *isref, int *isarray,
    which could be used by the Glk call in question. It then allocates
    space for them.
 */
-static void prepare_glk_args(char *proto, dispatch_splot_t *splot)
+static void prepare_glk_args(glui32 funcnum, char *proto, dispatch_splot_t *splot)
 {
   static gluniversal_t *garglist = NULL;
   static int garglist_size = 0;
@@ -550,7 +558,7 @@ static void prepare_glk_args(char *proto, dispatch_splot_t *splot)
   splot->maxargs = maxargs;
 
   if (splot->numvargs != numvargswanted)
-    fatalError("Wrong number of arguments to Glk function.");
+    fatalErrorI("Wrong number of arguments to Glk function.", funcnum);
 
   if (garglist && garglist_size < maxargs) {
     glulx_free(garglist);
@@ -1023,6 +1031,8 @@ glui32 git_find_id_for_window(winid_t win)
     return 0;
 
   objrock = gidispatch_get_objrock(win, gidisp_Class_Window);
+  if (!objrock.ptr)
+    return 0;
   return ((classref_t *)objrock.ptr)->id;
 }
 
@@ -1037,6 +1047,8 @@ glui32 git_find_id_for_stream(strid_t str)
     return 0;
 
   objrock = gidispatch_get_objrock(str, gidisp_Class_Stream);
+  if (!objrock.ptr)
+    return 0;
   return ((classref_t *)objrock.ptr)->id;
 }
 
@@ -1051,6 +1063,8 @@ glui32 git_find_id_for_fileref(frefid_t fref)
     return 0;
 
   objrock = gidispatch_get_objrock(fref, gidisp_Class_Fileref);
+  if (!objrock.ptr)
+    return 0;
   return ((classref_t *)objrock.ptr)->id;
 }
 
@@ -1065,6 +1079,8 @@ glui32 git_find_id_for_schannel(schanid_t schan)
     return 0;
 
   objrock = gidispatch_get_objrock(schan, gidisp_Class_Schannel);
+  if (!objrock.ptr)
+    return 0;
   return ((classref_t *)objrock.ptr)->id;
 }
 
@@ -1161,7 +1177,7 @@ static void classes_remove(int classid, void *obj)
 /* The object registration/unregistration callbacks that the library calls
     to keep the hash tables up to date. */
     
-static gidispatch_rock_t glulxe_classtable_register(void *obj, 
+static gidispatch_rock_t git_classtable_register(void *obj,
   glui32 objclass)
 {
   classref_t *cref;
@@ -1171,7 +1187,7 @@ static gidispatch_rock_t glulxe_classtable_register(void *obj,
   return objrock;
 }
 
-static void glulxe_classtable_unregister(void *obj, glui32 objclass, 
+static void git_classtable_unregister(void *obj, glui32 objclass,
   gidispatch_rock_t objrock)
 {
   classes_remove(objclass, obj);
@@ -1384,7 +1400,7 @@ static void release_temp_ptr_array(void **arr, glui32 addr, glui32 len, int objc
   }
 }
 
-static gidispatch_rock_t glulxe_retained_register(void *array,
+static gidispatch_rock_t git_retained_register(void *array,
   glui32 len, char *typecode)
 {
   gidispatch_rock_t rock;
@@ -1418,7 +1434,7 @@ static gidispatch_rock_t glulxe_retained_register(void *array,
   return rock;
 }
 
-static void glulxe_retained_unregister(void *array, glui32 len,
+static void git_retained_unregister(void *array, glui32 len,
   char *typecode, gidispatch_rock_t objrock)
 {
   arrayref_t *arref = NULL;
@@ -1472,7 +1488,7 @@ static void glulxe_retained_unregister(void *array, glui32 len,
   glulx_free(arref);
 }
 
-void set_library_select_hook(void (*func)(glui32))
+void set_library_select_hook(void (*func)(glui32, glui32, glui32, glui32))
 {
   library_select_hook = func;
 }
