@@ -1,5 +1,9 @@
 // Startup code for Windows Git
 
+#ifdef _MSC_VER // For Visual C++, get rand_s()
+#define _CRT_RAND_S
+#endif
+
 #include "glk.h"
 #include "WinGlk.h"
 #include "git.h"
@@ -68,6 +72,15 @@ void fatalError(const char* s)
     exit(1);
 }
 
+void fatalErrorI(const char* s, int i)
+{
+  const char* fmt = "%s (%X)";
+  int l = _scprintf(fmt,s,i);
+  void* msg = _alloca(l+1);
+  sprintf(msg,fmt,s,i);
+  fatalError(msg);
+}
+
 void glk_main()
 {
     void* file    = INVALID_HANDLE_VALUE;
@@ -101,3 +114,13 @@ void glk_main()
         CloseHandle(file);
 }
 
+glui32 native_random()
+{
+#ifdef _MSC_VER
+    unsigned int value;
+    rand_s(&value);
+    return value;
+#else
+    return xo_random();
+#endif
+}

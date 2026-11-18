@@ -31,6 +31,15 @@ void fatalError (const char * s)
     exit (1);
 }
 
+void fatalErrorI(const char* s, int i)
+{
+    const char* fmt = "%s (%X)";
+    int l = snprintf(NULL, 0, fmt, s, i);
+    char* msg = alloca(l+1);
+    snprintf(msg, l+1, fmt, s, i);
+    fatalError(msg);
+}
+
 #ifdef USE_MMAP
 // Fast loader that uses some fancy Unix features.
 
@@ -104,3 +113,12 @@ void glk_main ()
 }
 
 #endif // USE_MMAP
+
+#ifdef USE_NATIVE_RANDOM
+
+glui32 native_random()
+{
+    return arc4random();
+}
+
+#endif // USE_NATIVE_RANDOM

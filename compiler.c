@@ -1,5 +1,3 @@
-// $Id: compiler.c,v 1.27 2004/12/10 00:37:00 iain Exp $
-
 #include "git.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -396,9 +394,6 @@ static void compressWithCutoff (git_uint32 cutoff)
     BlockHeader * top = (BlockHeader*) sCodeTop;
     BlockHeader * h = start;
 
-    git_uint32 saveCount = 0;
-    git_uint32 deleteCount = 0;
-
     sCodeTop = sCodeStart;
 
     while (h < top)
@@ -415,11 +410,6 @@ static void compressWithCutoff (git_uint32 cutoff)
  
             memmove (sCodeTop, h, size * sizeof(git_uint32));
             sCodeTop += size;
-            ++saveCount;
-        }
-        else
-        {
-            ++deleteCount;
         }
         h = next;
     }
@@ -445,68 +435,6 @@ static void rebuildHashTable ()
                 node->u.next = gHashTable [node->address & (gHashSize-1)];
                 gHashTable [node->address & (gHashSize-1)] = node;
             }    
-        }
-    }
-}
-
-static void removeHashNode (HashNode* deadNode)
-{
-    HashNode* n = gHashTable [deadNode->address & (gHashSize-1)];
-    assert (deadNode != NULL);
-    
-    if (n == NULL)
-    {
-        // This hash bucket is empty! We have nothing to do.
-    }
-    else if (n == deadNode)
-    {
-        // The node to be removed is the first one in its bucket.        
-        gHashTable [deadNode->address & (gHashSize-1)] = NULL;
-    }
-    else
-    {
-        // The node to be removed is somewhere in the middle
-        // of the bucket. Step along the linked list until
-        // we find it.
-                
-        while (n->u.next != deadNode)
-            n = n->u.next;
-        
-        // Unlink it from the linked list.        
-        n->u.next = deadNode->u.next;
-    }
-}
-
-void pruneCodeCache (git_uint32 address, git_uint32 size)
-{
-    BlockHeader * start = (BlockHeader*) sCodeStart;
-    BlockHeader * top = (BlockHeader*) sCodeTop;
-    BlockHeader * h;
-
-    // Step through the cache, looking for blocks that overlap the
-    // specified range. If we find any, remove their nodes from the
-    // hash table, and set glulxSize to 0 so that they're dropped
-    // the next time we clean up the cache.
-    
-    for (h = start ; h < top ; h = END_OF_BLOCK(h))
-    {
-        // The start address of the block is in its final hash node.
-        
-        HashNode * node = END_OF_BLOCK(h);
-        git_uint32 glulxAddr = node[-1].address;
-        
-        if (glulxAddr < (address + size) && (glulxAddr + h->glulxSize) > address)
-        {
-            // This block overlaps the range of code that has to be pruned.
-            
-            git_uint32 i;
-            for (i = 0 ; i < h->numHashNodes ; ++i) 
-            {
-                --node;
-                removeHashNode (node);
-            }
-    
-            h->glulxSize = 0;
         }
     }
 }

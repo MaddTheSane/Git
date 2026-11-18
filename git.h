@@ -1,5 +1,4 @@
 // Main header for git
-// $Id: git.h,v 1.32 2004/12/22 12:40:07 iain Exp $
 
 #ifndef GIT_H
 #define GIT_H
@@ -37,6 +36,7 @@ extern void git (const git_uint8 * game,
                  git_uint32 undoSize);
 
 extern git_noreturn void fatalError (const char *);
+extern git_noreturn void fatalErrorI (const char *, int);
 
 // memory.c
 
@@ -68,11 +68,6 @@ enum GestaltSelector
     GESTALT_FLOAT        = 11,
     GESTALT_EXTUNDO      = 12,
     GESTALT_DOUBLE       = 13,
-    
-    // This special selector returns 1 if the cache control
-    // opcodes 'git_setcacheram' and 'git_prunecache' are available.
-    
-    GESTALT_GIT_CACHE_CONTROL = 0x7940
 };
 
 extern git_uint32 gestalt (enum GestaltSelector sel, git_uint32 param);
@@ -120,8 +115,7 @@ extern git_sint32* gStackPointer;
 
 extern enum IOMode gIoMode;
 
-extern glui32 lo_random (void);
-extern void lo_seed_random (glui32 seed);
+extern glui32 native_random (void);
 
 extern void startProgram (size_t cacheSize);
 

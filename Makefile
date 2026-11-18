@@ -38,7 +38,7 @@ INSTALLDIR = /usr/local/bin
 
 MAJOR = 1
 MINOR = 3
-PATCH = 6
+PATCH = 8
 
 include $(GLKINCLUDEDIR)/$(GLKMAKEFILE)
 
@@ -49,8 +49,8 @@ LIBS = -L$(GLKLIBDIR) $(GLKLIB) $(LINKLIBS) -lm
 HEADERS = version.h git.h config.h compiler.h \
 	memory.h opcodes.h labels.inc
 
-SOURCE = compiler.c gestalt.c git.c git_mac.c git_unix.c \
-	git_windows.c glkop.c heap.c memory.c opcodes.c \
+SOURCE = compiler.c gestalt.c git.c git_unix.c \
+	glkop.c heap.c memory.c opcodes.c \
 	operands.c peephole.c savefile.c saveundo.c \
 	search.c terp.c accel.c
 

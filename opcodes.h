@@ -1,5 +1,3 @@
-// $Id: opcodes.h,v 1.7 2004/12/22 12:40:07 iain Exp $
-
 #ifndef OPCODES_H
 #define OPCODES_H
 
@@ -172,10 +170,5 @@
 #define op_jdge         (0x235)
 #define op_jdisnan      (0x238)
 #define op_jdisinf      (0x239)
-
-// Special cache control opcodes.
-
-#define op_git_setcacheram (0x7940)
-#define op_git_prunecache  (0x7941)
 
 #endif // OPCODES_H
